@@ -59,6 +59,7 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 328028 2018-01-15 21:59:20Z tuex
 #include <netinet/sctp_constants.h>
 #if !defined(__Userspace_os_Windows)
 #include <netinet/udp.h>
+#include <netinet/icmp6.h>
 #endif
 #endif
 #if defined(__FreeBSD__)
@@ -7882,9 +7883,9 @@ sctp_recv_icmp_tunneled_packet(int cmd, struct sockaddr *sa, void *vip, void *ct
 #endif
 #endif
 
-#if defined(__FreeBSD__) && __FreeBSD_version >= 1100000
+#if defined(__Userspace__) || (defined(__FreeBSD__) && __FreeBSD_version >= 1100000)
 #ifdef INET6
-static void
+void
 sctp_recv_icmp6_tunneled_packet(int cmd, struct sockaddr *sa, void *d, void *ctx SCTP_UNUSED)
 {
 	struct ip6ctlparam *ip6cp;
@@ -7907,8 +7908,9 @@ sctp_recv_icmp6_tunneled_packet(int cmd, struct sockaddr *sa, void *d, void *ctx
 	/* Check if we can safely examine the ports and the
 	 * verification tag of the SCTP common header.
 	 */
-	if (ip6cp->ip6c_m->m_pkthdr.len <
-	    ip6cp->ip6c_off + sizeof(struct udphdr)+ offsetof(struct sctphdr, checksum)) {
+	if (ip6cp->ip6c_m->m_pkthdr.len < (uint16_t)
+	    (ip6cp->ip6c_off + sizeof(struct udphdr)+ offsetof(struct sctphdr, checksum))) {
+	    SCTPDBG(SCTP_DEBUG_USR, "Packet too short!!\n");
 		return;
 	}
 	/* Copy out the UDP header. */
@@ -7973,12 +7975,12 @@ sctp_recv_icmp6_tunneled_packet(int cmd, struct sockaddr *sa, void *d, void *ctx
 				return;
 			}
 		} else {
-#if defined(__FreeBSD__)
-			if (ip6cp->ip6c_m->m_pkthdr.len >=
-			    ip6cp->ip6c_off + sizeof(struct udphdr) +
-			                      sizeof(struct sctphdr) +
-			                      sizeof(struct sctp_chunkhdr) +
-			                      offsetof(struct sctp_init, a_rwnd)) {
+#if defined(__FreeBSD__) || defined(__Userspace__)
+			if (ip6cp->ip6c_m->m_pkthdr.len >= (uint16_t)
+			    (ip6cp->ip6c_off + sizeof(struct udphdr) +
+			                       sizeof(struct sctphdr) +
+			                       sizeof(struct sctp_chunkhdr) +
+			                       offsetof(struct sctp_init, a_rwnd))) {
 				/*
 				 * In this case we can check if we
 				 * got an INIT chunk and if the
@@ -8135,7 +8137,7 @@ sctp_over_udp_start(void)
 	/* Call the special UDP hook. */
 	if ((ret = udp_set_kernel_tunneling(SCTP_BASE_INFO(udp6_tun_socket),
 	                                    sctp_recv_udp_tunneled_packet,
-#if __FreeBSD_version >= 1100000
+#if __FreeBSD_version >= 1100000 || defined(__Userspace__)
 	                                    sctp_recv_icmp6_tunneled_packet,
 #endif
 	                                    NULL))) {
