@@ -48,7 +48,7 @@ extern void in6_sin_2_v4mapsin6(struct sockaddr_in *, struct sockaddr_in6 *);
 #endif
 #ifdef INET6
 void sctp6_notify(struct sctp_inpcb *, struct sctp_tcb *, struct sctp_nets *,
-                  uint8_t, uint8_t, uint16_t);
+                  uint8_t, uint8_t, uint32_t);
 void sctp6_ctlinput(int, struct sockaddr *, void *);
 #if defined(__Userspace_os_Windows)
 #define ICMP6_DST_UNREACH_NOROUTE       0
