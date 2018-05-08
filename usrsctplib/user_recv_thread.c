@@ -304,7 +304,7 @@ recv_function_icmp(void *arg)
 	  to_fill indicates this amount. */
 	int to_fill = MAXLEN_MBUF_CHAIN;
 	/* iovlen is the size of each mbuf in the chain */
-	int i, n, ncounter = 0, hlen;
+	int i, n, ncounter = 0;
 	int iovlen = MCLBYTES;
 	int want_ext = (iovlen > MLEN)? 1 : 0;
 	int want_header = 0;
@@ -387,9 +387,8 @@ recv_function_icmp(void *arg)
 		}
 		m = *recvmbuf;
 		ip = mtod(m, struct ip *);
-		hlen = ip->ip_hl << 2;
 #if defined(__Userspace_os_Darwin)
-		ip->ip_len = htons(ip->ip_len + hlen);
+		ip->ip_len = htons(ip->ip_len + (ip->ip_hl << 2));
 #endif
 		if (ntohs(ip->ip_len) != n) {
 			SCTPDBG(SCTP_DEBUG_USR,"IP total length does not match length of received packet\n");
