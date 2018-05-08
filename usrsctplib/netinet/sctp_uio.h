@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
  * Copyright (c) 2001-2007, by Cisco Systems, Inc. All rights reserved.
  * Copyright (c) 2008-2012, by Randall Stewart. All rights reserved.
  * Copyright (c) 2008-2012, by Michael Tuexen. All rights reserved.
@@ -32,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_uio.h 300733 2016-05-26 11:38:26Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_uio.h 326672 2017-12-07 22:19:08Z tuexen $");
 #endif
 
 #ifndef _NETINET_SCTP_UIO_H_
@@ -288,7 +290,8 @@ struct sctp_snd_all_completes {
 /* The lower four bits is an enumeration of PR-SCTP policies */
 #define SCTP_PR_SCTP_NONE 0x0000 /* Reliable transfer */
 #define SCTP_PR_SCTP_TTL  0x0001 /* Time based PR-SCTP */
-#define SCTP_PR_SCTP_BUF  0x0002 /* Buffer based PR-SCTP */
+#define SCTP_PR_SCTP_PRIO 0x0002 /* Buffer based PR-SCTP */
+#define SCTP_PR_SCTP_BUF  SCTP_PR_SCTP_PRIO /* For backwards compatibility */
 #define SCTP_PR_SCTP_RTX  0x0003 /* Number of retransmissions based PR-SCTP */
 #define SCTP_PR_SCTP_MAX  SCTP_PR_SCTP_RTX
 #define SCTP_PR_SCTP_ALL  0x000f /* Used for aggregated stats */
@@ -1009,7 +1012,7 @@ struct sctpstat {
 	uint32_t  sctps_recvauthfailed;      /* total number of auth failed */
 	uint32_t  sctps_recvexpress;         /* total fast path receives all one chunk */
 	uint32_t  sctps_recvexpressm;        /* total fast path multi-part data */
-	uint32_t  sctps_recvnocrc;
+	uint32_t  sctps_recv_spare;          /* formerly sctps_recvnocrc */
 	uint32_t  sctps_recvswcrc;
 	uint32_t  sctps_recvhwcrc;
 
@@ -1020,13 +1023,13 @@ struct sctpstat {
 	uint32_t  sctps_sendretransdata;     /* total output retransmitted DATA chunks */
 	uint32_t  sctps_sendfastretrans;     /* total output fast retransmitted DATA chunks */
 	uint32_t  sctps_sendmultfastretrans; /* total FR's that happened more than once
-                                              * to same chunk (u-del multi-fr algo).
-					      */
+	                                      * to same chunk (u-del multi-fr algo).
+	                                      */
 	uint32_t  sctps_sendheartbeat;       /* total output HB chunks     */
 	uint32_t  sctps_sendecne;            /* total output ECNE chunks    */
 	uint32_t  sctps_sendauth;            /* total output AUTH chunks FIXME   */
-	uint32_t  sctps_senderrors;	     /* ip_output error counter */
-	uint32_t  sctps_sendnocrc;
+	uint32_t  sctps_senderrors;          /* ip_output error counter */
+	uint32_t  sctps_send_spare;          /* formerly sctps_sendnocrc */
 	uint32_t  sctps_sendswcrc;
 	uint32_t  sctps_sendhwcrc;
 	/* PCKDROPREP statistics: */
@@ -1305,13 +1308,17 @@ struct xsctp_raddr {
 	uint32_t rtt;
 	uint32_t heartbeat_interval;
 	uint32_t ssthresh;
-	uint32_t extra_padding[30];              /* future */
+	uint16_t encaps_port;
+	uint16_t state;
+	uint32_t extra_padding[29];              /* future */
 #endif
 #else
 	uint32_t rtt;
 	uint32_t heartbeat_interval;
 	uint32_t ssthresh;
-	uint32_t extra_padding[30];              /* future */
+	uint16_t encaps_port;
+	uint16_t state;
+	uint32_t extra_padding[29];              /* future */
 #endif
 };
 
