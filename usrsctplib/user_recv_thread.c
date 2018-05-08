@@ -408,7 +408,7 @@ recv_function_icmp(void *arg)
 		    icmp->icmp_type == ICMP_TIMXCEED ||
 		    icmp->icmp_type == ICMP_PARAMPROB) {
 			int icmplen = ntohs(ip->ip_len) - sizeof(struct ip);
-			if (icmplen < ICMP_ADVLENMIN || icmplen < ICMP_ADVLEN(icmp) ||
+			if (icmplen < (int)ICMP_ADVLENMIN || icmplen < ICMP_ADVLEN(icmp) ||
 			    icmp->icmp_ip.ip_hl < (sizeof(struct ip) >> 2)) {
 				SCTPDBG(SCTP_DEBUG_USR,"Bad icmp packet length\n");
 				return (NULL);
@@ -424,7 +424,7 @@ recv_function_icmp(void *arg)
 				sctp_ctlinput(icmp->icmp_code, (struct sockaddr *)&icmpsrc, (void *)inner_ip);
 			} else if (inner_ip->ip_p == IPPROTO_UDP) {
 				struct udphdr *udp = (struct udphdr *)(inner_ip + 1);
-				int port = ntohs(udp->uh_sport);
+				uint16_t port = ntohs(udp->uh_sport);
 				if (port == SCTP_BASE_SYSCTL(sctp_udp_tunneling_port)) {
 					sctp_recv_icmp_tunneled_packet(icmp->icmp_code, (struct sockaddr *)&icmpsrc, (void *)inner_ip, NULL);
 				}
@@ -1723,6 +1723,14 @@ recv_thread_destroy(void)
 		close(SCTP_BASE_VAR(userspace_udpsctp));
 #endif
 		SCTP_BASE_VAR(userspace_udpsctp) = -1;
+	}
+	if (SCTP_BASE_VAR(userspace_icmp) != -1) {
+#if defined(__Userspace_os_Windows)
+		closesocket(SCTP_BASE_VAR(userspace_icmp));
+#else
+		close(SCTP_BASE_VAR(userspace_icmp));
+#endif
+		SCTP_BASE_VAR(userspace_icmp) = -1;
 	}
 #endif
 #if defined(INET6)

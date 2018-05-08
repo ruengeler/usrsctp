@@ -26,7 +26,6 @@
  *
  */
 
-
 #ifdef _WIN32
 #include <netinet/sctp_pcb.h>
 #include <sys/timeb.h>
@@ -41,6 +40,80 @@
 #if defined(__Userspace_os_Linux)
 #include <sys/prctl.h>
 #endif
+
+static void
+print_usr_address(struct sockaddr *sa)
+{
+#ifdef INET6
+#if defined(__FreeBSD__) && __FreeBSD_version >= 700000
+	char ip6buf[INET6_ADDRSTRLEN];
+#endif
+#endif
+
+	switch (sa->sa_family) {
+#ifdef INET6
+	case AF_INET6:
+	{
+		struct sockaddr_in6 *sin6;
+
+		sin6 = (struct sockaddr_in6 *)sa;
+#if defined(__Userspace__)
+		printf("IPv6 address: %x:%x:%x:%x:%x:%x:%x:%x:port:%d scope:%u\n",
+			    ntohs(sin6->sin6_addr.s6_addr16[0]),
+			    ntohs(sin6->sin6_addr.s6_addr16[1]),
+			    ntohs(sin6->sin6_addr.s6_addr16[2]),
+			    ntohs(sin6->sin6_addr.s6_addr16[3]),
+			    ntohs(sin6->sin6_addr.s6_addr16[4]),
+			    ntohs(sin6->sin6_addr.s6_addr16[5]),
+			    ntohs(sin6->sin6_addr.s6_addr16[6]),
+			    ntohs(sin6->sin6_addr.s6_addr16[7]),
+			    ntohs(sin6->sin6_port),
+			    sin6->sin6_scope_id);
+#else
+#if defined(__FreeBSD__) && __FreeBSD_version >= 700000
+		printf("IPv6 address: %s:port:%d scope:%u\n",
+			    ip6_sprintf(ip6buf, &sin6->sin6_addr),
+			    ntohs(sin6->sin6_port),
+			    sin6->sin6_scope_id);
+#else
+		printf("IPv6 address: %s:port:%d scope:%u\n",
+			    ip6_sprintf(&sin6->sin6_addr),
+			    ntohs(sin6->sin6_port),
+			    sin6->sin6_scope_id);
+#endif
+#endif
+		break;
+	}
+#endif
+#ifdef INET
+	case AF_INET:
+	{
+		struct sockaddr_in *sin;
+		unsigned char *p;
+
+		sin = (struct sockaddr_in *)sa;
+		p = (unsigned char *)&sin->sin_addr;
+		printf("IPv4 address: %u.%u.%u.%u:%d\n",
+			    p[0], p[1], p[2], p[3], ntohs(sin->sin_port));
+		break;
+	}
+#endif
+#if defined(__Userspace__)
+	case AF_CONN:
+	{
+		struct sockaddr_conn *sconn;
+
+		sconn = (struct sockaddr_conn *)sa;
+		printf("AF_CONN address: %p\n", sconn->sconn_addr);
+		break;
+	}
+#endif
+	default:
+		printf("?\n");
+		break;
+	}
+}
+
 
 #if defined(__Userspace_os_Windows)
 /* Adapter to translate Unix thread start routines to Windows thread start
@@ -68,6 +141,114 @@ sctp_userspace_thread_create(userland_thread_t *thread, start_routine_t start_ro
 	return pthread_create(thread, NULL, start_routine, NULL);
 }
 #endif
+
+#if defined (__Userspace_os_Windows)
+int
+sctp_get_mtu_from_addr(struct sockaddr *sa)
+{
+	int mtu = 0;
+#if defined(INET) || defined(INET6)
+	int ret;
+	unsigned int i = 0;
+	DWORD Err, AdapterAddrsSize;
+	PIP_ADAPTER_ADDRESSES pAdapterAddrs, pAdapt;
+	ret = 0;
+	AdapterAddrsSize = 0;
+	pAdapterAddrs = NULL;
+	if ((Err = GetAdaptersAddresses(AF_UNSPEC, 0, NULL, NULL, &AdapterAddrsSize)) != 0) {
+		if ((Err != ERROR_BUFFER_OVERFLOW) && (Err != ERROR_INSUFFICIENT_BUFFER)) {
+			SCTPDBG(SCTP_DEBUG_USR, "GetAdaptersV4Addresses() sizing failed with error code %d and AdapterAddrsSize = %d\n", Err, AdapterAddrsSize);
+			ret = -1;
+			goto cleanup;
+		}
+	}
+
+	/* Allocate memory from sizing information */
+	if ((pAdapterAddrs = (PIP_ADAPTER_ADDRESSES) GlobalAlloc(GPTR, AdapterAddrsSize)) == NULL) {
+		SCTPDBG(SCTP_DEBUG_USR, "Memory allocation error!\n");
+		return -1;
+	}
+	/* Get actual adapter information */
+	if ((Err = GetAdaptersAddresses(AF_INET, 0, NULL, pAdapterAddrs, &AdapterAddrsSize)) != ERROR_SUCCESS) {
+		SCTPDBG(SCTP_DEBUG_USR, "GetAdaptersV4Addresses() failed with error code %d\n", Err);
+		ret = -1;
+		goto cleanup;
+	}
+	for (pAdapt = pAdapterAddrs; pAdapt; pAdapt = pAdapt->Next) {
+		struct sockaddr *addr = (struct sockaddr *)pAdapt->FirstUnicastAddress->Address.lpSockaddr;
+		if (sa->sa_family != addr->sa_family) {
+			continue;
+		}
+		SCTPDBG(SCTP_DEBUG_OUTPUT3, "Compare to address: ");
+		SCTPDBG_ADDR(SCTP_DEBUG_OUTPUT3, (struct sockaddr *)(addr));
+		switch (sa->sa_family) {
+			case AF_INET:
+				if (memcmp(((const void *)&((struct sockaddr_in *)addr)->sin_addr), ((void *)&((struct sockaddr_in *)sa)->sin_addr), sizeof(struct in_addr)) == 0) {
+					mtu = pAdapt->Mtu;
+					goto cleanup;
+				}
+				break;
+			case AF_INET6:
+				if (memcmp(((const void *)&((struct sockaddr_in6 *)addr)->sin6_addr), ((void *)&((struct sockaddr_in6 *)sa)->sin6_addr), sizeof(struct in_addr)) == 0) {
+					mtu = pAdapt->Mtu;
+					goto cleanup;
+				}
+				break;
+			default:
+				printf("Address family not supported\n");
+		}
+	}
+cleanup:
+	if (pAdapterAddrs != NULL) {
+		GlobalFree(pAdapterAddrs);
+	}
+#endif
+	return mtu;
+}
+
+#elif defined(__Userspace__) && !defined(__Userspace_os_NaCl)
+int
+sctp_get_mtu_from_addr(struct sockaddr *sa)
+{
+#if defined(INET) || defined(INET6)
+	int rc;
+	struct ifaddrs *ifa, *ifas;
+printf("in sctp_get_mtu_from_addr vor getifaddrs\n");
+
+		print_usr_address((struct sockaddr *)sa);
+	rc = getifaddrs(&ifas);
+	if (rc != 0) {
+		return 0;
+	}
+	printf("got ifaddrs\n");
+	for (ifa = ifas; ifa; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL) {
+			continue;
+		}
+
+		if (ifa->ifa_addr->sa_family != sa->sa_family) {
+			continue;
+		}
+
+		switch (sa->sa_family) {
+			case AF_INET:
+			print_usr_address((struct sockaddr *)ifa->ifa_addr);
+				if (memcmp(((const void *)&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr), ((void *)&((struct sockaddr_in *)sa)->sin_addr), sizeof(struct in_addr)) == 0) {
+					return (sctp_userspace_get_mtu_from_ifn(if_nametoindex(ifa->ifa_name), sa->sa_family));
+				}
+				break;
+			case AF_INET6:
+				if (memcmp(((const void *)&((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr), ((void *)&((struct sockaddr_in6 *)sa)->sin6_addr), sizeof(struct in6_addr)) == 0) {
+					return (sctp_userspace_get_mtu_from_ifn(if_nametoindex(ifa->ifa_name), sa->sa_family));
+				}
+				break;
+		}
+	}
+#endif
+	return 0;
+}
+#endif
+
 
 void
 sctp_userspace_set_threadname(const char *name)

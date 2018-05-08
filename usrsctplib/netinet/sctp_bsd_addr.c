@@ -809,30 +809,11 @@ sctp_get_mbuf_for_msg(unsigned int space_needed, int want_header,
    *
    */
 
-	int mbuf_threshold;
-	if (want_header) {
-		MGETHDR(m, how, type);
-	} else {
-		MGET(m, how, type);
-	}
+	m =  m_getm2(NULL, space_needed, how, type, want_header ? M_PKTHDR : 0, allonebuf);
 	if (m == NULL) {
-		return (NULL);
+		/* bad, no memory */
+		return (m);
 	}
-	if (allonebuf == 0)
-		mbuf_threshold = SCTP_BASE_SYSCTL(sctp_mbuf_threshold_count);
-	else
-		mbuf_threshold = 1;
-
-
-	if ((int)space_needed > (((mbuf_threshold - 1) * MLEN) + MHLEN)) {
-		MCLGET(m, how);
-		if (SCTP_BUF_IS_EXTENDED(m) == 0) {
-			sctp_m_freem(m);
-			return (NULL);
-		}
-	}
-	SCTP_BUF_LEN(m) = 0;
-	SCTP_BUF_NEXT(m) = SCTP_BUF_NEXT_PKT(m) = NULL;
 
 	/* __Userspace__
 	 * Check if anything need to be done to ensure logging works
@@ -853,10 +834,7 @@ sctp_get_mbuf_for_msg(unsigned int space_needed, int want_header,
 			m_freem(m);
 			return (NULL);
 		}
-	}
-	if (SCTP_BUF_NEXT(m)) {
-		sctp_m_freem(SCTP_BUF_NEXT(m));
-		SCTP_BUF_NEXT(m) = NULL;
+		KASSERT(!SCTP_BUF_NEXT(m), ("%s: no chain allowed", __FUNCTION__));
 	}
 #ifdef SCTP_MBUF_LOGGING
 	if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_MBUF_LOGGING_ENABLE) {

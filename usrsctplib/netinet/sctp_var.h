@@ -419,6 +419,7 @@ void sctp_input __P((struct mbuf *, int));
 #endif
 void sctp_pathmtu_adjustment __P((struct sctp_tcb *, uint16_t));
 #else
+
 #if defined(__APPLE__) && !defined(APPLE_LEOPARD) && !defined(APPLE_SNOWLEOPARD) && !defined(APPLE_LION) && !defined(APPLE_MOUNTAINLION) && !defined(APPLE_ELCAPITAN)
 void sctp_ctlinput(int, struct sockaddr *, void *, struct ifnet * SCTP_UNUSED);
 #else
@@ -428,6 +429,8 @@ int sctp_ctloutput(int, struct socket *, int, int, struct mbuf **);
 #else
 int sctp_ctloutput(struct socket *, struct sockopt *);
 #endif
+#endif
+
 #ifdef INET
 void sctp_input_with_port(struct mbuf *, int, uint16_t);
 #if defined(__FreeBSD__) && __FreeBSD_version >= 1100020
@@ -459,7 +462,7 @@ void sctp_init(uint16_t,
                int (*)(void *addr, void *buffer, size_t length, uint8_t tos, uint8_t set_df),
                void (*)(const char *, ...));
 void sctp_notify(struct sctp_inpcb *, struct sctp_tcb *, struct sctp_nets *,
-    uint8_t, uint8_t, uint16_t, uint16_t);
+    uint8_t, uint8_t, uint16_t, uint32_t);
 #elif defined(__FreeBSD__) && __FreeBSD_version < 902000
 void sctp_init __P((void));
 #elif defined(__APPLE__) && (!defined(APPLE_LEOPARD) && !defined(APPLE_SNOWLEOPARD) &&!defined(APPLE_LION) && !defined(APPLE_MOUNTAINLION))
