@@ -60,6 +60,7 @@
 #ifndef _USER_IP6_VAR_H_
 #define _USER_IP6_VAR_H_
 
+#if !defined(__Userspace_os_FreeBSD)
 /* from netinet6/ip6protosw.h */
 struct ip6ctlparam {
 	struct mbuf *ip6c_m;            /* start of mbuf chain */
@@ -72,6 +73,7 @@ struct ip6ctlparam {
 	void *ip6c_cmdarg;              /* control command dependent data */
 	u_int8_t ip6c_nxt;              /* final next header field */
 };
+#endif
 
 #if defined(__Userspace_os_Windows)
 struct ip6_hdr {
