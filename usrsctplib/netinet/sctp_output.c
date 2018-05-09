@@ -4311,9 +4311,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 				net->src_addr_selected = 1;
 #if defined(__Userspace__)
 				if (!net->got_max) {
-					printf("!got_max net->mtu=%d\n", net->mtu);
 					int mtu = sctp_get_mtu_from_addr((struct sockaddr *)&(net->ro._s_addr->address.sin));
-					printf("returned from sctp_get_mtu_from_addr mtu=%d\n", mtu);
 					net->got_max = 1;
 					net->mtu = mtu;
 					sctp_pathmtu_adjustment(stcb, net->mtu);

@@ -395,14 +395,14 @@ m_uiotombuf(struct uio *uio, int how, int len, int align, int flags)
 	 * Give us the full allocation or nothing.
 	 * If len is zero return the smallest empty mbuf.
 	 */
-	m = m_getm2(NULL, max(total + align, 1), how, MT_DATA, flags, 0);
+	m = m_getm2(NULL, (int)max(total + align, 1), how, MT_DATA, flags, 0);
 	if (m == NULL)
 		return (NULL);
 	m->m_data += align;
 
 	/* Fill all mbufs with uio data and update header information. */
 	for (mb = m; mb != NULL; mb = mb->m_next) {
-		length = min(M_TRAILINGSPACE(mb), total - progress);
+		length = (int)min(M_TRAILINGSPACE(mb), total - progress);
 		error = uiomove(mtod(mb, void *), length, uio);
 		if (error) {
 			m_freem(m);
