@@ -4234,7 +4234,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 #else
 			ip->ip_off = IP_DF;
 #endif
-#elif defined(WITH_CONVERT_IP_OFF) || defined(__APPLE__) //|| defined(__Userspace__)
+#elif defined(WITH_CONVERT_IP_OFF) || defined(__APPLE__) || defined(__Userspace_os_Darwin)
 			ip->ip_off = IP_DF;
 #else
 			ip->ip_off = htons(IP_DF);
@@ -11735,7 +11735,7 @@ sctp_send_resp_msg(struct sockaddr *src, struct sockaddr *dst,
 #else
 		ip->ip_off = IP_DF;
 #endif
-#elif defined(WITH_CONVERT_IP_OFF) || defined(__APPLE__) //|| defined(__Userspace__)
+#elif defined(WITH_CONVERT_IP_OFF) || defined(__APPLE__) || defined(__Userspace_os_Darwin)
 		ip->ip_off = IP_DF;
 #else
 		ip->ip_off = htons(IP_DF);
