@@ -132,7 +132,6 @@ in6_sin_2_v4mapsin6(struct sockaddr_in *sin, struct sockaddr_in6 *sin6)
 #endif
 #endif
 
-#if !defined(__Userspace__)
 int
 #if defined(__APPLE__) || defined(__FreeBSD__)
 sctp6_input_with_port(struct mbuf **i_pak, int *offp, uint16_t port)
@@ -337,7 +336,6 @@ sctp6_input(struct mbuf **i_pak, int *offp, int proto SCTP_UNUSED)
 	return (sctp6_input_with_port(i_pak, offp, 0));
 }
 #endif
-#endif
 
 void
 sctp6_notify(struct sctp_inpcb *inp,
@@ -391,168 +389,31 @@ sctp6_notify(struct sctp_inpcb *inp,
 		}
 		break;
 	case ICMP6_PACKET_TOO_BIG:
-		if (inp->plpmtud_supported) {
-			uint32_t base;
-			if (stcb->asoc.scope.ipv6_addr_legal) {
-				base = SCTP_PROBE_MTU_V6_BASE;
-			}
-			net->probe_counts = 0;
-			if (net->probing_state == SCTP_PROBE_DONE) {
-				sctp_pathmtu_timer(inp, stcb, net);
-			}
-			if (net->probing_state > SCTP_PROBE_NONE && net->probing_state < SCTP_PROBE_DONE) {
-				if (next_mtu == 0) {
-					switch (net->probing_state) {
-					case SCTP_PROBE_BASE:
-						net->probed_mtu = SCTP_PROBE_MIN;
-						net->mtu_probing = 0;
-						net->probing_state = SCTP_PROBE_ERROR;
-						sctp_send_hb(stcb, net, SCTP_SO_NOT_LOCKED);
-						break;
-					case SCTP_PROBE_SEARCH_UP:
-						net->mtu_probing = 0;
-						net->mtu = net->probed_mtu;
-						net->probing_state = SCTP_PROBE_DONE;
-						sctp_timer_stop(SCTP_TIMER_TYPE_HEARTBEAT, stcb->sctp_ep, stcb, net, SCTP_FROM_SCTP_USRREQ + SCTP_LOC_3);
-						sctp_timer_start(SCTP_TIMER_TYPE_HEARTBEAT, stcb->sctp_ep, stcb, net);
-						if (SCTP_OS_TIMER_PENDING(&net->pmtu_timer.timer)) {
-							sctp_timer_stop(SCTP_TIMER_TYPE_PATHMTURAISE, stcb->sctp_ep, stcb, net,
-							SCTP_FROM_SCTP_USRREQ + SCTP_LOC_4);
-						}
-						sctp_pathmtu_adjustment(stcb, net->mtu, net);
-						sctp_timer_start(SCTP_TIMER_TYPE_PATHMTURAISE, stcb->sctp_ep, stcb, net);
-						break;
-					case SCTP_PROBE_SEARCH_DOWN:
-						net->max_mtu = sctp_get_prev_mtu(net->max_mtu);
-						net->probe_mtu = net->max_mtu;
-						net->probe_counts = 0;
-						sctp_send_a_probe(stcb->sctp_ep, stcb, net);
-						break;
-					}
-				} else if (net->probed_mtu <= next_mtu && next_mtu < net->probe_mtu) {
-					switch (net->probing_state) {
-					case SCTP_PROBE_BASE:
-						net->probed_mtu = SCTP_PROBE_MIN;
-						net->mtu_probing = 0;
-						net->max_mtu = min(net->max_mtu, next_mtu);
-						net->probing_state = SCTP_PROBE_ERROR;
-						sctp_send_hb(stcb, net, SCTP_SO_NOT_LOCKED);
-						break;
-					case SCTP_PROBE_SEARCH_UP:
-						net->mtu_probing = 0;
-						//net->mtu = net->probed_mtu;
-						net->max_mtu = min(net->max_mtu, next_mtu);
-						net->probe_mtu = net->max_mtu;
-						net->probe_counts = 0;
-						sctp_send_a_probe(stcb->sctp_ep, stcb, net);
-						break;
-					case SCTP_PROBE_SEARCH_DOWN:
-						net->max_mtu = min(net->max_mtu, next_mtu);
-						net->probe_mtu = net->max_mtu;
-						net->probe_counts = 0;
-						sctp_send_a_probe(stcb->sctp_ep, stcb, net);
-						break;
-					}
-				} else if (next_mtu < net->probed_mtu) {
-					switch (net->probing_state) {
-					case SCTP_PROBE_BASE:
-					case SCTP_PROBE_SEARCH_DOWN:
-						net->probed_mtu = SCTP_PROBE_MIN;
-						net->mtu_probing = 0;
-						net->max_mtu = min(net->max_mtu, next_mtu);
-						net->probing_state = SCTP_PROBE_ERROR;
-						sctp_send_hb(stcb, net, SCTP_SO_NOT_LOCKED);
-						break;
-					case SCTP_PROBE_SEARCH_UP:
-						if (next_mtu < base) {
-							net->probed_mtu = SCTP_PROBE_MIN;
-							net->mtu_probing = 0;
-							net->max_mtu = min(net->max_mtu, next_mtu);
-							net->probing_state = SCTP_PROBE_ERROR;
-							sctp_send_hb(stcb, net, SCTP_SO_NOT_LOCKED);
-						} else {
-							net->probe_mtu = base;
-							net->probed_mtu = base;
-							net->mtu = min(net->probed_mtu, next_mtu);
-							net->max_mtu = min(net->max_mtu, next_mtu);
-							net->probing_state = SCTP_PROBE_BASE;
-							net->probe_counts = 0;
-							sctp_send_a_probe(stcb->sctp_ep, stcb, net);
-						}
-						break;
-					}
-				} else if (next_mtu == base) {
-					switch (net->probing_state) {
-					case SCTP_PROBE_BASE:
-						net->probed_mtu = SCTP_PROBE_MIN;
-						net->mtu_probing = 0;
-						net->max_mtu = min(net->max_mtu, next_mtu);
-						net->probing_state = SCTP_PROBE_ERROR;
-						sctp_send_hb(stcb, net, SCTP_SO_NOT_LOCKED);
-						break;
-					case SCTP_PROBE_SEARCH_DOWN:
-						net->mtu_probing = 0;
-						net->mtu = next_mtu;
-						net->probed_mtu = next_mtu;
-						net->max_mtu = next_mtu;
-						net->probing_state = SCTP_PROBE_DONE;
-						sctp_timer_stop(SCTP_TIMER_TYPE_HEARTBEAT, stcb->sctp_ep, stcb, net, SCTP_FROM_SCTP_USRREQ + SCTP_LOC_7);
-						sctp_timer_start(SCTP_TIMER_TYPE_HEARTBEAT, stcb->sctp_ep, stcb, net);
-						if (SCTP_OS_TIMER_PENDING(&net->pmtu_timer.timer)) {
-							sctp_timer_stop(SCTP_TIMER_TYPE_PATHMTURAISE, stcb->sctp_ep, stcb, net,
-							SCTP_FROM_SCTP_USRREQ + SCTP_LOC_8);
-						}
-						sctp_timer_start(SCTP_TIMER_TYPE_PATHMTURAISE, stcb->sctp_ep, stcb, net);
-						break;
-					case SCTP_PROBE_SEARCH_UP:
-						net->mtu = min(net->probed_mtu, next_mtu);
-						net->max_mtu = min(net->max_mtu, next_mtu);
-						if (net->probed_mtu > base) {
-							net->probe_mtu = base;
-							net->probing_state = SCTP_PROBE_BASE;
-							net->probe_counts = 0;
-							sctp_send_a_probe(stcb->sctp_ep, stcb, net);
-						} else {
-							net->probing_state = SCTP_PROBE_DONE;
-							sctp_timer_stop(SCTP_TIMER_TYPE_HEARTBEAT, stcb->sctp_ep, stcb, net, SCTP_FROM_SCTP_USRREQ + SCTP_LOC_7);
-							sctp_timer_start(SCTP_TIMER_TYPE_HEARTBEAT, stcb->sctp_ep, stcb, net);
-							if (SCTP_OS_TIMER_PENDING(&net->pmtu_timer.timer)) {
-								sctp_timer_stop(SCTP_TIMER_TYPE_PATHMTURAISE, stcb->sctp_ep, stcb, net,
-								SCTP_FROM_SCTP_USRREQ + SCTP_LOC_8);
-							}
-							sctp_timer_start(SCTP_TIMER_TYPE_PATHMTURAISE, stcb->sctp_ep, stcb, net);
-						}
-						break;
-					}
-				}
-			}
+		if (net->dest_state & SCTP_ADDR_NO_PMTUD) {
+			SCTP_TCB_UNLOCK(stcb);
+			break;
+		}
+		if (SCTP_OS_TIMER_PENDING(&net->pmtu_timer.timer)) {
+			timer_stopped = 1;
+			sctp_timer_stop(SCTP_TIMER_TYPE_PATHMTURAISE, inp, stcb, net,
+			                SCTP_FROM_SCTP_USRREQ + SCTP_LOC_1);
 		} else {
-			if (net->dest_state & SCTP_ADDR_NO_PMTUD) {
-				SCTP_TCB_UNLOCK(stcb);
-				break;
-			}
-			if (SCTP_OS_TIMER_PENDING(&net->pmtu_timer.timer)) {
-				timer_stopped = 1;
-				sctp_timer_stop(SCTP_TIMER_TYPE_PATHMTURAISE, inp, stcb, net,
-				                SCTP_FROM_SCTP_USRREQ + SCTP_LOC_1);
-			} else {
-				timer_stopped = 0;
-			}
-			/* Update the path MTU. */
-			if (net->port) {
-				next_mtu -= sizeof(struct udphdr);
-			}
-			if (net->mtu > next_mtu) {
-				net->mtu = next_mtu;
-			}
-			/* Update the association MTU */
-			if (stcb->asoc.smallest_mtu > next_mtu) {
-				sctp_pathmtu_adjustment(stcb, next_mtu, net);
-			}
-			/* Finally, start the PMTU timer if it was running before. */
-			if (timer_stopped) {
-				sctp_timer_start(SCTP_TIMER_TYPE_PATHMTURAISE, inp, stcb, net);
-			}
+			timer_stopped = 0;
+		}
+		/* Update the path MTU. */
+		if (net->port) {
+			next_mtu -= sizeof(struct udphdr);
+		}
+		if (net->mtu > next_mtu) {
+			net->mtu = next_mtu;
+		}
+		/* Update the association MTU */
+		if (stcb->asoc.smallest_mtu > next_mtu) {
+			sctp_pathmtu_adjustment(stcb, next_mtu);
+		}
+		/* Finally, start the PMTU timer if it was running before. */
+		if (timer_stopped) {
+			sctp_timer_start(SCTP_TIMER_TYPE_PATHMTURAISE, inp, stcb, net);
 		}
 		SCTP_TCB_UNLOCK(stcb);
 		break;
@@ -670,10 +531,10 @@ printf("sctp6_ctlinput\n");
 				}
 			} else {
 #if defined(__FreeBSD__) || defined(__Userspace__)
-                if (ip6cp->ip6c_m->m_pkthdr.len >= (uint16_t)
-                    (ip6cp->ip6c_off + sizeof(struct sctphdr) +
+				if (ip6cp->ip6c_m->m_pkthdr.len >= (uint16_t)
+				    (ip6cp->ip6c_off + sizeof(struct sctphdr) +
 				                      sizeof(struct sctp_chunkhdr) +
-                                      offsetof(struct sctp_init, a_rwnd))) {
+				                      offsetof(struct sctp_init, a_rwnd))) {
 					/*
 					 * In this case we can check if we
 					 * got an INIT chunk and if the

@@ -1979,7 +1979,6 @@ recv_thread_destroy(void)
 #if defined(INET) || defined(INET6)
 	if (SCTP_BASE_VAR(userspace_route) != -1) {
 		close(SCTP_BASE_VAR(userspace_route));
-		SCTP_BASE_VAR(userspace_route) = -1;
 	}
 #endif
 #endif
@@ -1990,7 +1989,6 @@ recv_thread_destroy(void)
 #else
 		close(SCTP_BASE_VAR(userspace_rawsctp));
 #endif
-		SCTP_BASE_VAR(userspace_rawsctp) = -1;
 	}
 	if (SCTP_BASE_VAR(userspace_udpsctp) != -1) {
 #if defined(__Userspace_os_Windows)
@@ -1998,7 +1996,6 @@ recv_thread_destroy(void)
 #else
 		close(SCTP_BASE_VAR(userspace_udpsctp));
 #endif
-		SCTP_BASE_VAR(userspace_udpsctp) = -1;
 	}
 	if (SCTP_BASE_VAR(userspace_icmp) != -1) {
 #if defined(__Userspace_os_Windows)
@@ -2006,7 +2003,6 @@ recv_thread_destroy(void)
 #else
 		close(SCTP_BASE_VAR(userspace_icmp));
 #endif
-		SCTP_BASE_VAR(userspace_icmp) = -1;
 	}
 #endif
 #if defined(INET6)
@@ -2016,7 +2012,6 @@ recv_thread_destroy(void)
 #else
 		close(SCTP_BASE_VAR(userspace_rawsctp6));
 #endif
-		SCTP_BASE_VAR(userspace_rawsctp6) = -1;
 	}
 	if (SCTP_BASE_VAR(userspace_udpsctp6) != -1) {
 #if defined(__Userspace_os_Windows)
@@ -2024,7 +2019,6 @@ recv_thread_destroy(void)
 #else
 		close(SCTP_BASE_VAR(userspace_udpsctp6));
 #endif
-		SCTP_BASE_VAR(userspace_udpsctp6) = -1;
 	}
 	if (SCTP_BASE_VAR(userspace_icmp6) != -1) {
 #if defined(__Userspace_os_Windows)
@@ -2032,7 +2026,6 @@ recv_thread_destroy(void)
 #else
 		close(SCTP_BASE_VAR(userspace_icmp6));
 #endif
-		SCTP_BASE_VAR(userspace_icmp6) = -1;
 	}
 #endif
 }

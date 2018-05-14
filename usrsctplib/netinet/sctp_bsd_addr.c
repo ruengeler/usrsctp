@@ -798,37 +798,18 @@ struct mbuf *
 sctp_get_mbuf_for_msg(unsigned int space_needed, int want_header,
 		      int how, int allonebuf, int type)
 {
-    struct mbuf *m = NULL;
+	struct mbuf *m = NULL;
+#if defined(__FreeBSD__) && __FreeBSD_version > 1100052 || defined(__Userspace__)
 #if defined(__Userspace__)
-
-  /*
-   * __Userspace__
-   * Using m_clget, which creates an mbuf and a cluster and
-   * hooks those together.
-   * TODO: This does not yet have functionality for jumbo packets.
-   *
-   */
-
 	m =  m_getm2(NULL, space_needed, how, type, want_header ? M_PKTHDR : 0, allonebuf);
-	if (m == NULL) {
-		/* bad, no memory */
-		return (m);
-	}
-
-	/* __Userspace__
-	 * Check if anything need to be done to ensure logging works
-	 */
-#ifdef SCTP_MBUF_LOGGING
-	if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_MBUF_LOGGING_ENABLE) {
-		sctp_log_mb(m, SCTP_MBUF_IALLOC);
-	}
-#endif
-#elif defined(__FreeBSD__) && __FreeBSD_version > 1100052
+#else
 	m =  m_getm2(NULL, space_needed, how, type, want_header ? M_PKTHDR : 0);
+#endif
 	if (m == NULL) {
 		/* bad, no memory */
 		return (m);
 	}
+#if !defined(__Userspace__)
 	if (allonebuf) {
 		if (SCTP_BUF_SIZE(m) < space_needed) {
 			m_freem(m);
@@ -836,85 +817,33 @@ sctp_get_mbuf_for_msg(unsigned int space_needed, int want_header,
 		}
 		KASSERT(!SCTP_BUF_NEXT(m), ("%s: no chain allowed", __FUNCTION__));
 	}
-#ifdef SCTP_MBUF_LOGGING
-	if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_MBUF_LOGGING_ENABLE) {
-		sctp_log_mb(m, SCTP_MBUF_IALLOC);
-	}
 #endif
-#elif defined(__FreeBSD__) && __FreeBSD_version > 602000
-	m =  m_getm2(NULL, space_needed, how, type, want_header ? M_PKTHDR : 0);
-	if (m == NULL) {
-		/* bad, no memory */
-		return (m);
-	}
-	if (allonebuf) {
-		int siz;
-		if (SCTP_BUF_IS_EXTENDED(m)) {
-			siz = SCTP_BUF_EXTEND_SIZE(m);
-		} else {
-			if (want_header)
-				siz = MHLEN;
-			else
-				siz = MLEN;
-		}
-		if (siz < space_needed) {
-			m_freem(m);
-			return (NULL);
-		}
-	}
-	if (SCTP_BUF_NEXT(m)) {
-		sctp_m_freem(SCTP_BUF_NEXT(m));
-		SCTP_BUF_NEXT(m) = NULL;
-	}
 #ifdef SCTP_MBUF_LOGGING
 	if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_MBUF_LOGGING_ENABLE) {
 		sctp_log_mb(m, SCTP_MBUF_IALLOC);
 	}
 #endif
 #else
-#if defined(__FreeBSD__) && __FreeBSD_version >= 601000
-	int aloc_size;
-	int index = 0;
-#endif
 	int mbuf_threshold;
+	unsigned int size;
+
 	if (want_header) {
 		MGETHDR(m, how, type);
+		size = MHLEN;
 	} else {
 		MGET(m, how, type);
+		size = MLEN;
 	}
 	if (m == NULL) {
 		return (NULL);
 	}
-	if (allonebuf == 0)
+	if (allonebuf == 0) {
 		mbuf_threshold = SCTP_BASE_SYSCTL(sctp_mbuf_threshold_count);
-	else
+	} else {
 		mbuf_threshold = 1;
+	}
 
-
-	if (space_needed > (((mbuf_threshold - 1) * MLEN) + MHLEN)) {
-#if defined(__FreeBSD__) && __FreeBSD_version >= 601000
-	try_again:
-		index = 4;
-		if (space_needed <= MCLBYTES) {
-			aloc_size = MCLBYTES;
-		} else {
-			aloc_size = MJUMPAGESIZE;
-			index = 5;
-		}
-		m_cljget(m, how, aloc_size);
-		if (m == NULL) {
-			return (NULL);
-		}
-		if (SCTP_BUF_IS_EXTENDED(m) == 0) {
-			if ((aloc_size != MCLBYTES) &&
-			   (allonebuf == 0)) {
-				aloc_size -= 10;
-				goto try_again;
-			}
-			sctp_m_freem(m);
-			return (NULL);
-		}
-#else
+	if (space_needed > (unsigned int)(((mbuf_threshold - 1) * MLEN) + MHLEN)) {
 		MCLGET(m, how);
 		if (m == NULL) {
 			return (NULL);
@@ -923,7 +852,11 @@ sctp_get_mbuf_for_msg(unsigned int space_needed, int want_header,
 			sctp_m_freem(m);
 			return (NULL);
 		}
-#endif
+		size = SCTP_BUF_EXTEND_SIZE(m);
+	}
+	if (allonebuf != 0 && size < space_needed) {
+		m_freem(m);
+		return (NULL);
 	}
 	SCTP_BUF_LEN(m) = 0;
 	SCTP_BUF_NEXT(m) = SCTP_BUF_NEXT_PKT(m) = NULL;
