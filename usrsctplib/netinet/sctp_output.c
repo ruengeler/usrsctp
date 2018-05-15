@@ -4477,13 +4477,17 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 			if ((ro->ro_rt != NULL) && (net->ro._s_addr) &&
 			    ((net->dest_state & SCTP_ADDR_NO_PMTUD) == 0)) {
 				uint32_t mtu;
-
+//#if defined(__Userspace__)
+//				mtu = sctp_get_mtu_from_addr(stcb, (struct sockaddr *)&(net->ro._s_addr->address.sin));
+//#else
 				mtu = SCTP_GATHER_MTU_FROM_ROUTE(net->ro._s_addr, &net->ro._l_addr.sa, ro->ro_rt);
+//#endif
 				if (mtu > 0) {
 					if (net->port) {
 						mtu -= sizeof(struct udphdr);
 					}
 					if ((stcb != NULL) && (stcb->asoc.smallest_mtu > mtu)) {
+					printf("%s:%d: call sctp_mtu_size_reset\n", __func__, __LINE__);
 						sctp_mtu_size_reset(inp, &stcb->asoc, mtu);
 					}
 					net->mtu = mtu;
@@ -4946,6 +4950,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 						mtu -= sizeof(struct udphdr);
 					}
 					if ((stcb != NULL) && (stcb->asoc.smallest_mtu > mtu)) {
+					printf("%s:%d: call sctp_mtu_size_reset\n", __func__, __LINE__);
 						sctp_mtu_size_reset(inp, &stcb->asoc, mtu);
 					}
 					net->mtu = mtu;
@@ -4959,6 +4964,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 #endif
 				if (ND_IFINFO(ifp)->linkmtu &&
 				    (stcb->asoc.smallest_mtu > ND_IFINFO(ifp)->linkmtu)) {
+				    printf("%s:%d: call sctp_mtu_size_reset\n", __func__, __LINE__);
 					sctp_mtu_size_reset(inp,
 					    &stcb->asoc,
 					    ND_IFINFO(ifp)->linkmtu);
@@ -6739,6 +6745,7 @@ sctp_get_frag_point(struct sctp_tcb *stcb,
 #endif
 	}
 	ovh += SCTP_DATA_CHUNK_OVERHEAD(stcb);
+	printf("ovh=%d asoc.sctp_frag_point=%d asoc->smallest_mtu=%d\n", ovh, stcb->asoc.sctp_frag_point, asoc->smallest_mtu);
 	if (stcb->asoc.sctp_frag_point > asoc->smallest_mtu)
 		siz = asoc->smallest_mtu - ovh;
 	else
@@ -6758,6 +6765,7 @@ sctp_get_frag_point(struct sctp_tcb *stcb,
 		/* make it an even word boundary please */
 		siz -= (siz % 4);
 	}
+	printf("sctp_frag_point = %d\n", siz);
 	return (siz);
 }
 
@@ -13154,7 +13162,7 @@ sctp_copy_one(struct sctp_stream_queue_pending *sp,
 
 	sp->tail_mbuf = m_last(sp->data);
 	return (0);
-#elif defined(__FreeBSD__) && __FreeBSD_version > 602000
+#elif defined(__FreeBSD__) && __FreeBSD_version > 602000 || defined(__Userspace__)
 	sp->data = m_uiotombuf(uio, M_WAITOK, sp->length,
 	                       resv_upfront, 0);
 	if (sp->data == NULL) {
@@ -13182,7 +13190,7 @@ sctp_copy_one(struct sctp_stream_queue_pending *sp,
 	 * have a bad cnt.
 	 */
 	SCTP_BUF_RESV_UF(m, resv_upfront);
-	cancpy = (int)M_TRAILINGSPACE(m);
+	cancpy = M_TRAILINGSPACE(m);
 	willcpy = min(cancpy, left);
 	while (left > 0) {
 		/* move in user data */
@@ -13206,7 +13214,7 @@ sctp_copy_one(struct sctp_stream_queue_pending *sp,
 				return (ENOBUFS);
 			}
 			m = SCTP_BUF_NEXT(m);
-			cancpy = (int)M_TRAILINGSPACE(m);
+			cancpy = M_TRAILINGSPACE(m);
 			willcpy = min(cancpy, left);
 		} else {
 			sp->tail_mbuf = m;
@@ -13215,7 +13223,7 @@ sctp_copy_one(struct sctp_stream_queue_pending *sp,
 	}
 	sp->data = head;
 	sp->length = cpsz;
-	return (0);
+return (0);
 #endif
 }
 

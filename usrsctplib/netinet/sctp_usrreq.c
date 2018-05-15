@@ -256,6 +256,7 @@ sctp_pathmtu_adjustment(struct sctp_tcb *stcb, uint16_t nxtsz)
 
 	/* Adjust that too */
 	stcb->asoc.smallest_mtu = nxtsz;
+	printf("sctp_pathmtu_adjustment: smallest_mtu set to %d\n", stcb->asoc.smallest_mtu);
 	/* now off to subtract IP_DF flag if needed */
 	overhead = IP_HDR_SIZE + sizeof(struct sctphdr);
 	if (sctp_auth_is_required_chunk(SCTP_DATA, stcb->asoc.peer_auth_chunks)) {

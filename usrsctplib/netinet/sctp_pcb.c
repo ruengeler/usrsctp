@@ -4407,16 +4407,17 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 		} else {
 			netfirst->dest_state = SCTP_ADDR_REACHABLE;
 		}
-
+printf("%s:%d\n", __func__, __LINE__);
 		return (0);
 	}
 	addr_inscope = 1;
+	printf("%s:%d\n", __func__, __LINE__);
 	switch (newaddr->sa_family) {
 #ifdef INET
 	case AF_INET:
 	{
 		struct sockaddr_in *sin;
-
+printf("%s:%d\n", __func__, __LINE__);
 		sin = (struct sockaddr_in *)newaddr;
 		if (sin->sin_addr.s_addr == 0) {
 			/* Invalid address */
@@ -4501,7 +4502,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	case AF_CONN:
 	{
 		struct sockaddr_conn *sconn;
-
+printf("%s:%d\n", __func__, __LINE__);
 		sconn = (struct sockaddr_conn *)newaddr;
 		if (sconn->sconn_addr == NULL) {
 			/* Invalid address */
@@ -4514,6 +4515,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	}
 #endif
 	default:
+	printf("%s:%d\n", __func__, __LINE__);
 		/* not supported family type */
 		return (-1);
 	}
@@ -4521,6 +4523,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	if (net == NULL) {
 		return (-1);
 	}
+	printf("%s:%d\n", __func__, __LINE__);
 	SCTP_INCR_RADDR_COUNT();
 	memset(net, 0, sizeof(struct sctp_nets));
 	(void)SCTP_GETTIME_TIMEVAL(&net->start_time);
@@ -4530,6 +4533,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	switch (newaddr->sa_family) {
 #ifdef INET
 	case AF_INET:
+	printf("%s:%d\n", __func__, __LINE__);
 #ifndef HAVE_SA_LEN
 		memcpy(&net->ro._l_addr, newaddr, sizeof(struct sockaddr_in));
 #endif
@@ -4553,9 +4557,11 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 		break;
 #endif
 	default:
+	printf("%s:%d\n", __func__, __LINE__);
 		break;
 	}
 	net->addr_is_local = sctp_is_address_on_local_host(newaddr, stcb->asoc.vrf_id);
+	printf("%s:%d\n", __func__, __LINE__);
 	if (net->addr_is_local && ((set_scope || (from == SCTP_ADDR_IS_CONFIRMED)))) {
 		stcb->asoc.scope.loopback_scope = 1;
 		stcb->asoc.scope.ipv4_local_scope = 1;
@@ -4576,6 +4582,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 			net->dest_state = SCTP_ADDR_REACHABLE |
 			    SCTP_ADDR_UNCONFIRMED;
 	}
+	printf("%s:%d\n", __func__, __LINE__);
 	/* We set this to 0, the timer code knows that
 	 * this means its an initial value
 	 */
@@ -4600,6 +4607,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	} else {
 		net->dest_state &= ~SCTP_ADDR_NO_PMTUD;
 	}
+	printf("%s:%d\n", __func__, __LINE__);
 	net->heart_beat_delay = stcb->asoc.heart_beat_delay;
 	/* Init the timer structure */
 	SCTP_OS_TIMER_INIT(&net->rxt_timer.timer);
@@ -4634,7 +4642,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	SCTP_RTALLOC((sctp_route_t *)&net->ro,
 	             stcb->asoc.vrf_id,
 	             stcb->sctp_ep->fibnum);
-
+printf("%s:%d\n", __func__, __LINE__);
 	net->src_addr_selected = 0;
 #if !defined(__Userspace__)
 	if (SCTP_ROUTE_HAS_VALID_IFN(&net->ro)) {
@@ -4696,13 +4704,18 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 		}
 	}
 #endif
+printf("%s:%d\n", __func__, __LINE__);
+printf("net->mtu=%d\n", net->mtu);
 	if (net->mtu == 0) {
+	printf("%s:%d\n", __func__, __LINE__);
 		if (stcb->asoc.default_mtu > 0) {
 			net->mtu = stcb->asoc.default_mtu;
+			printf("%s:%d\n", __func__, __LINE__);
 			switch (net->ro._l_addr.sa.sa_family) {
 #ifdef INET
 			case AF_INET:
 				net->mtu += SCTP_MIN_V4_OVERHEAD;
+				printf("%s:%d\n", __func__, __LINE__);
 				break;
 #endif
 #ifdef INET6
@@ -4728,6 +4741,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 #ifdef INET
 			case AF_INET:
 				net->mtu = SCTP_DEFAULT_MTU;
+				printf("%s:%d\n", __func__, __LINE__);
 				break;
 #endif
 #ifdef INET6
@@ -4770,7 +4784,7 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 	}
 #endif /* SCTP_EMBEDDED_V6_SCOPE */
 #endif
-
+printf("mtu=%d smallest_mtu=%d\n", net->mtu, stcb->asoc.smallest_mtu);
 	/* JRS - Use the congestion control given in the CC module */
 	if (stcb->asoc.cc_functions.sctp_set_initial_cc_param != NULL)
 		(*stcb->asoc.cc_functions.sctp_set_initial_cc_param)(stcb, net);

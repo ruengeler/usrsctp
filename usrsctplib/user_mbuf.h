@@ -57,6 +57,7 @@ struct mbuf * m_free(struct mbuf *m);
 void m_clget(struct mbuf *m, int how);
 struct mbuf * m_getm2(struct mbuf *m, int len, int how, short type, int flags, int allonebuf);
 struct mbuf *m_uiotombuf(struct uio *uio, int how, int len, int align, int flags);
+struct mbuf *m_last(struct mbuf *m);
 
 
 /* mbuf initialization function */
@@ -377,19 +378,33 @@ extern struct mbstat	mbstat;		/* General mbuf stats/infos */
 	    (m)->m_flags & M_PKTHDR ? (m)->m_data - (m)->m_pktdat :	\
 	    (m)->m_data - (m)->m_dat)
 
+#define M_START(m)                                                      \
+          (((m)->m_flags & M_EXT) ? (m)->m_ext.ext_buf :                  \
+           ((m)->m_flags & M_PKTHDR) ? &(m)->m_pktdat[0] :                \
+           &(m)->m_dat[0])
+
+/*
+ * Return the size of the buffer associated with an mbuf, handling external
+ * storage, packet-header mbufs, and regular data mbufs.
+ */
+#define M_SIZE(m)								\
+	(((m)->m_flags & M_EXT) ? (m)->m_ext.ext_size :	\
+	    ((m)->m_flags & M_PKTHDR) ? MHLEN :			\
+	    MLEN)
+
+
 /*
  * Compute the amount of space available after the end of data in an mbuf.
  *
  * The M_WRITABLE() is a temporary, conservative safety measure: the burden
  * of checking writability of the mbuf data area rests solely with the caller.
  */
+
 #define	M_TRAILINGSPACE(m)						\
 	((m)->m_flags & M_EXT ?						\
 	    (M_WRITABLE(m) ? (m)->m_ext.ext_buf + (m)->m_ext.ext_size	\
 		- ((m)->m_data + (m)->m_len) : 0) :			\
 	    &(m)->m_dat[MLEN] - ((m)->m_data + (m)->m_len))
-
-
 
 /*
  * Arrange to prepend space of size plen to mbuf m.  If a new mbuf must be

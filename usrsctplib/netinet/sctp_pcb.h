@@ -115,6 +115,9 @@ struct sctp_ifa {
 	uint32_t flags;
 	uint32_t localifa_flags;
 	uint32_t vrf_id;	/* vrf_id of this addr (for deleting) */
+#if defined(__Userspace__)
+	uint32_t mtu;
+#endif
 	uint8_t src_is_loop;
 	uint8_t src_is_priv;
 	uint8_t src_is_glob;

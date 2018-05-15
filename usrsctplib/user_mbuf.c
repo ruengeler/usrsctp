@@ -81,6 +81,7 @@ static void	mb_dtor_clust(void *, void *);
 static int mbuf_constructor_dup(struct mbuf *m, int pkthdr, short type)
 {
 	int flags = pkthdr;
+	printf("mbuf_constructor_dup\n");
 	if (type == MT_NOINIT)
 		return (0);
 
@@ -90,6 +91,7 @@ static int mbuf_constructor_dup(struct mbuf *m, int pkthdr, short type)
 	m->m_flags = flags;
 	m->m_type = type;
 	if (flags & M_PKTHDR) {
+	printf("PKTHDR\n");
 		m->m_data = m->m_pktdat;
 		m->m_pkthdr.rcvif = NULL;
 		m->m_pkthdr.len = 0;
@@ -110,6 +112,7 @@ struct mbuf *
 m_get(int how, short type)
 {
 	struct mbuf *mret;
+	printf("m_get!\n");
 #if defined(SCTP_SIMPLE_ALLOCATOR)
 	struct mb_args mbuf_mb_args;
 
@@ -135,6 +138,7 @@ m_get(int how, short type)
 	 */
 	if (mret) {
 #if USING_MBUF_CONSTRUCTOR
+printf("USING_MBUF_CONSTRUCTOR\n");
 		if (! (mret->m_type == type) ) {
 			mbuf_constructor_dup(mret, 0, type);
 		}
@@ -152,6 +156,7 @@ struct mbuf *
 m_gethdr(int how, short type)
 {
 	struct mbuf *mret;
+	printf("m_gethdr\n");
 #if defined(SCTP_SIMPLE_ALLOCATOR)
 	struct mb_args mbuf_mb_args;
 
@@ -188,7 +193,7 @@ m_gethdr(int how, short type)
 struct mbuf *
 m_free(struct mbuf *m)
 {
-
+printf("m_free\n");
 	struct mbuf *n = m->m_next;
 
 	if (m->m_flags & M_EXT)
@@ -247,6 +252,7 @@ m_clget(struct mbuf *m, int how)
 #if defined(SCTP_SIMPLE_ALLOCATOR)
 	struct clust_args clust_mb_args_l;
 #endif
+printf("m_clget\n");
 	if (m->m_flags & M_EXT) {
 		SCTPDBG(SCTP_DEBUG_USR, "%s: %p mbuf already has cluster\n", __func__, (void *)m);
 	}
@@ -286,12 +292,32 @@ m_clget(struct mbuf *m, int how)
 #endif
 }
 
+int
+m_trailingspace(struct mbuf *m)
+{
+	int space = 0;
+
+	if (m->m_flags & M_EXT) {
+		if (M_WRITABLE(m)) {
+			space = m->m_ext.ext_buf + m->m_ext.ext_size - m->m_data + m->m_len;
+		}
+	} else {
+		do {
+			space += (&m->m_dat[MLEN] - (m->m_data + (m)->m_len));
+			printf("space=%d\n", space);
+			m = SCTP_BUF_NEXT(m);
+		} while (m != NULL);
+	}
+	return space;
+}
+
 struct mbuf *
 m_getm2(struct mbuf *m, int len, int how, short type, int flags, int allonebuf)
 {
 	struct mbuf *mb, *nm = NULL, *mtail = NULL;
 	int size = 0, mbuf_threshold, space_needed = len;
-
+printf("m_getm2 len=%d allonebuf=%d\n", len, allonebuf);
+printf("MLEN=%d MHLEN=%d MCLBYTES=%d\n", MLEN, MHLEN, MCLBYTES);
 	KASSERT(len >= 0, ("%s: len is < 0", __func__));
 
 	/* Validate flags. */
@@ -299,6 +325,7 @@ m_getm2(struct mbuf *m, int len, int how, short type, int flags, int allonebuf)
 
 	/* Packet header mbuf must be first in chain. */
 	if ((flags & M_PKTHDR) && m != NULL) {
+	printf("delete flag\n");
 		flags &= ~M_PKTHDR;
 	}
 
@@ -309,6 +336,7 @@ m_getm2(struct mbuf *m, int len, int how, short type, int flags, int allonebuf)
 
 	/* Loop and append maximum sized mbufs to the chain tail. */
 	while (len > 0) {
+	printf("len left=%d\n", len);
 		if ((!allonebuf && len >= MCLBYTES) || (len > (int)(((mbuf_threshold - 1) * MLEN) + MHLEN))) {
 			mb = m_gethdr(how, type);
 			MCLGET(mb, how);
@@ -338,7 +366,7 @@ m_getm2(struct mbuf *m, int len, int how, short type, int flags, int allonebuf)
 		}
 
 		if (allonebuf != 0 && size < space_needed) {
-			m_freem(m);
+			m_freem(nm);
 			return (NULL);
 		}
 
@@ -364,6 +392,14 @@ m_getm2(struct mbuf *m, int len, int how, short type, int flags, int allonebuf)
 		m = nm;
 	}
 
+	return (m);
+}
+
+struct mbuf *
+m_last(struct mbuf *m)
+{
+	while (m->m_next)
+		m = m->m_next;
 	return (m);
 }
 
@@ -567,7 +603,7 @@ mb_ctor_mbuf(void *mem, void *arg, int flgs)
 
 	int flags;
 	short type;
-
+printf("USING_MBUF_CONSTRUCTOR\n");
 	m = (struct mbuf *)mem;
 	args = (struct mb_args *)arg;
 	flags = args->flags;

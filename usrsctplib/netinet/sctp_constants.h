@@ -707,7 +707,7 @@ extern void getwintimeofday(struct timeval *tv);
 
 #define SCTP_INITIAL_CWND 4380
 
-#define SCTP_DEFAULT_MTU 1500 /* emergency default MTU */
+#define SCTP_DEFAULT_MTU 3000 /* emergency default MTU */
 /* amount peer is obligated to have in rwnd or I will abort */
 #define SCTP_MIN_RWND	1500
 
