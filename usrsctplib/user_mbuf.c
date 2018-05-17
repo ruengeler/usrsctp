@@ -291,32 +291,13 @@ printf("m_clget\n");
 #endif
 }
 
-int
-m_trailingspace(struct mbuf *m)
-{
-	int space = 0;
-
-	if (m->m_flags & M_EXT) {
-		if (M_WRITABLE(m)) {
-			space = m->m_ext.ext_buf + m->m_ext.ext_size - m->m_data + m->m_len;
-		}
-	} else {
-		do {
-			space += (&m->m_dat[MLEN] - (m->m_data + (m)->m_len));
-			printf("space=%d\n", space);
-			m = SCTP_BUF_NEXT(m);
-		} while (m != NULL);
-	}
-	return space;
-}
 
 struct mbuf *
 m_getm2(struct mbuf *m, int len, int how, short type, int flags, int allonebuf)
 {
 	struct mbuf *mb, *nm = NULL, *mtail = NULL;
 	int size = 0, mbuf_threshold, space_needed = len;
-printf("m_getm2 len=%d allonebuf=%d\n", len, allonebuf);
-printf("MLEN=%d MHLEN=%d MCLBYTES=%d\n", MLEN, MHLEN, MCLBYTES);
+
 	KASSERT(len >= 0, ("%s: len is < 0", __func__));
 
 	/* Validate flags. */
