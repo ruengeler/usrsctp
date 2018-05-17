@@ -4477,11 +4477,12 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 			if ((ro->ro_rt != NULL) && (net->ro._s_addr) &&
 			    ((net->dest_state & SCTP_ADDR_NO_PMTUD) == 0)) {
 				uint32_t mtu;
-//#if defined(__Userspace__)
-//				mtu = sctp_get_mtu_from_addr(stcb, (struct sockaddr *)&(net->ro._s_addr->address.sin));
-//#else
+#if defined(__Userspace__)
+				mtu = sctp_get_mtu_from_addr(inp, (struct sockaddr *)&(net->ro._s_addr->address.sin));
+#else
 				mtu = SCTP_GATHER_MTU_FROM_ROUTE(net->ro._s_addr, &net->ro._l_addr.sa, ro->ro_rt);
-//#endif
+#endif
+printf("got mtu = %d\n", mtu);
 				if (mtu > 0) {
 					if (net->port) {
 						mtu -= sizeof(struct udphdr);

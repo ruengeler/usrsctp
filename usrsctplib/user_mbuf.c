@@ -193,7 +193,6 @@ m_gethdr(int how, short type)
 struct mbuf *
 m_free(struct mbuf *m)
 {
-printf("m_free\n");
 	struct mbuf *n = m->m_next;
 
 	if (m->m_flags & M_EXT)
